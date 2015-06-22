@@ -1,0 +1,51 @@
+# script intended to scrape theses author names, advisor names, and titles from files supplied by anthropology dept.
+
+# when converting text files from Word docs, choose encoding UTF-8, insert line breaks, end lines with CR/LF, and allow character subsitution
+
+import re
+import csv
+import codecs
+import glob
+
+file_list = glob.glob("*.txt") #get filenames for parsing
+#print file_list
+out_file = 'theses_consolidated.csv'
+theses_data = [['Author', 'Advisor(s)', 'Title', 'Note', 'File']] #headers for csv output
+
+for file in file_list:
+    with open(file, 'rb') as text:
+        theses_text = text.read()
+    theses = re.split('\r\n\r', theses_text)
+    for row in theses:
+        thesis = []
+    #print '---'
+    #print row
+    #print ' '
+    #print re.split('\t',row)
+        if not row.startswith('\nSTUDENT'):
+            for item in re.split('\r',row):
+                test = re.search(r"\n([A-Za-z ]+)\t([A-Za-z ]+)", item) #look for author, advisor; skip the whole row if missing
+                if test:
+                    thesis = re.split('\t',item.strip())
+                    #print re.split('\t',item)
+                    test2 = re.search(r'\r\n\t"([A-Za-z: ]+)', row) #look for title
+                    if test2:
+                        #print test2.group(1)
+                        thesis += [test2.group(1)]
+                    else:
+                        thesis += ['']
+                    test3 = re.search(r'"\r\n\t([A-Za-z:. ]+)', row) #look for advisor note after title
+                    if test3:
+                        #print test2.group(1)
+                        thesis += [test3.group(1)]
+                    else:
+                        thesis += ['']
+                    thesis += [file] #append filename for subject context, etc
+                    theses_data += [thesis]
+                    
+with open(out_file,'wb') as output:
+    output.write(codecs.BOM_UTF8)
+    writer = csv.writer(output,quoting=csv.QUOTE_ALL,quotechar='"')
+    for line in theses_data:
+        writer.writerow([i.encode('utf-8') for i in line])
+print out_file, 'created'
